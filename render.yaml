@@ -5,7 +5,5 @@ services:
     buildCommand: "pip install -r requirements.txt"
     startCommand: "gunicorn app:app"
     envVars:
-      - key: OPENAI_API_KEY
-        sync: false # Renderのダッシュボードで設定するため、ここには値を書かない
       - key: PYTHON_VERSION
-        value: 3.11.5 # 使用するPythonのバージョンを指定
+        value: 3.11.5
