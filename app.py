@@ -1,37 +1,72 @@
 import os
 from flask import Flask, render_template, request, jsonify
 import random
+import re
 
 app = Flask(__name__)
 
 # APIを使わないローカルAIの応答ロジック
 def get_local_ai_response(question):
     """
-    簡単なルールベースで応答を生成する関数
+    ルールベースで応答を生成する関数を強化
     """
-    # 質問を小文字にして、キーワードが含まれているかチェック
-    question = question.lower()
+    question_lower = question.lower()
     
-    # ルールベースの応答辞書
-    qa_pairs = {
-        "こんにちは": ["こんにちは！何かお探しですか？", "どうも！ご用件はなんでしょう？"],
-        "ありがとう": ["どういたしまして！", "お役に立ててうれしいです。"],
-        "名前は": ["私はこのアプリに内蔵されたAIです。", "私の名前はまだありません。"],
-        "天気": ["ごめんなさい、外部の天気情報は取得できないんです。", "今日の天気は...分かりません！"],
-        "おはよう": ["おはようございます！良い一日を！", "おはようございます。"],
-    }
-    
-    # 完全に一致する質問があれば、その答えをランダムに返す
-    for key, value in qa_pairs.items():
-        if key in question:
-            return random.choice(value)
-    
-    # 一致するものがなければ、デフォルトの応答を返す
+    # --- 1. 特定のキーワードに対する応答 ---
+    # 挨拶
+    if any(word in question_lower for word in ["こんにちは", "やあ", "どうも"]):
+        return random.choice(["こんにちは！星の海へようこそ。", "どうも！何か面白い話はありますか？"])
+    if any(word in question_lower for word in ["ありがとう", "感謝"]):
+        return random.choice(["どういたしまして！", "お役に立てて光栄です。", "こちらこそ！"])
+    # 自己紹介
+    if any(word in question_lower for word in ["名前は", "あなたは誰", "自己紹介"]):
+        return random.choice(["私はこのアプリの星空を旅するAIです。", "名もなき航海士、といったところでしょうか。"])
+    # 天気
+    if "天気" in question_lower:
+        return "残念ながら、この宇宙船からは地球の天気は観測できないんです…。"
+    # ユーモア
+    if any(word in question_lower for word in ["面白い話", "ジョーク", "笑わせて"]):
+        return random.choice([
+            "宇宙人がレストランに入って一言。「この店の雰囲気、惑星一だね！」",
+            "布団が吹っ飛んだ、の宇宙バージョンは「ブラックホールがホワイトホールに吸い込まれた」です。",
+        ])
+    # 雑学
+    if any(word in question_lower for word in ["雑学", "豆知識", "教えて"]):
+        return random.choice([
+            "宇宙空間は完全に無音だって知ってましたか？音を伝える空気がないからです。",
+            "木星の巨大な嵐「大赤斑」は、地球が丸ごと2〜3個入るほどの大きさなんですよ。",
+            "光の速さは秒速約30万kmですが、それでも太陽から地球まで約8分19秒かかります。"
+        ])
+
+    # --- 2. パターンマッチングによる簡易計算 ---
+    # 例: 「5たす3は？」「12 x 5 = ?」
+    match = re.search(r'(\d+)\s*([\+\-\*\/]|たす|ひく|かける|わる)\s*(\d+)', question_lower)
+    if match:
+        num1 = int(match.group(1))
+        op = match.group(2)
+        num2 = int(match.group(3))
+        
+        try:
+            if op in ['+', 'たす']:
+                return f"計算しますね。答えは {num1 + num2} です。"
+            if op in ['-', 'ひく']:
+                return f"えーっと…たしか {num1 - num2} ですね。"
+            if op in ['*', 'かける']:
+                return f"暗算します… {num1 * num2} でしょうか。"
+            if op in ['/', 'わる']:
+                if num2 == 0:
+                    return "ゼロで割ることは、宇宙の法則で禁じられているんです！"
+                return f"答えは {num1 / num2} です。"
+        except Exception:
+            return "うーん、難しい計算はちょっと苦手かもしれません…。"
+
+    # --- 3. デフォルトの応答 ---
     default_responses = [
-        "なるほど、もう少し詳しく教えていただけますか？",
-        "すみません、よく分かりませんでした。",
+        "なるほど…宇宙の神秘のようですね。",
+        "もう少し詳しく教えてもらえますか？",
         f"「{question}」についてですね。興味深いです。",
-        "面白い質問ですね！",
+        "それは、まるで未知の惑星を発見した時のような驚きです！",
+        "すみません、ワームホールを通過中でよく聞き取れませんでした。",
     ]
     return random.choice(default_responses)
 
@@ -47,7 +82,6 @@ def ask():
         return jsonify({'error': '質問がありません'}), 400
 
     try:
-        # ローカルのAI関数を呼び出す
         ai_answer = get_local_ai_response(user_question)
         return jsonify({'answer': ai_answer})
 
