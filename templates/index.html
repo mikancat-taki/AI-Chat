@@ -3,22 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ブラウザAIチャット（API不要）</title>
+<title>ブラウザAIチャット（軽量版）</title>
 <style>
   body {
     margin: 0;
     font-family: 'Segoe UI', sans-serif;
-    background: linear-gradient(to bottom, #ffecd2, #fcb69f); /* 夕焼け風 */
+    background: linear-gradient(to bottom, #ffecd2, #fcb69f);
     height: 100vh;
     display: flex;
     justify-content: center;
     align-items: center;
   }
   #chat-container {
-    width: 400px;
-    max-width: 90%;
-    height: 600px;
-    background: rgba(255, 255, 255, 0.9);
+    width: 450px;
+    max-width: 95%;
+    height: 650px;
+    background: rgba(255, 255, 255, 0.95);
     border-radius: 15px;
     box-shadow: 0 10px 25px rgba(0,0,0,0.2);
     display: flex;
@@ -76,58 +76,76 @@
 </style>
 </head>
 <body>
-  <div id="chat-container">
-    <div id="chat-log"></div>
-    <div id="input-area">
-      <input type="text" id="user-input" placeholder="メッセージを入力…">
-      <button id="send-btn">送信</button>
-    </div>
+<div id="chat-container">
+  <div id="chat-log"></div>
+  <div id="input-area">
+    <input type="text" id="user-input" placeholder="メッセージを入力…">
+    <button id="send-btn">送信</button>
   </div>
+</div>
 
 <script>
   const chatLog = document.getElementById("chat-log");
   const userInput = document.getElementById("user-input");
   const sendBtn = document.getElementById("send-btn");
 
-  // 簡易AIの応答ルール
-  function getBotResponse(text) {
-    text = text.toLowerCase();
-    if(text.includes("こんにちは")) return "こんにちは！今日は元気ですか？";
-    if(text.includes("元気")) return "それは良かったです！";
-    if(text.includes("名前")) return "私はブラウザAIです。";
-    if(text.includes("ありがとう")) return "どういたしまして！";
-    if(text.includes("さようなら") || text.includes("バイ")) return "さようなら！またね。";
-    // ランダム応答
-    const randomResponses = [
+  // 過去の会話を保持
+  let conversationHistory = [];
+
+  // 軽量AI応答
+  function getBotResponse(input) {
+    input = input.trim();
+    conversationHistory.push({role:"user", text: input});
+
+    // キーワード解析
+    const keywords = ["こんにちは","元気","名前","ありがとう","さようなら","好き","嫌い"];
+    for (let word of keywords) {
+      if(input.includes(word)) {
+        switch(word){
+          case "こんにちは": return "こんにちは！今日はどんな気分ですか？";
+          case "元気": return "元気で何よりです！";
+          case "名前": return "私はブラウザAIです。あなたの名前は？";
+          case "ありがとう": return "どういたしまして！";
+          case "さようなら": return "さようなら！また会いましょう。";
+          case "好き": return "そうなんですね！それが好きな理由は何ですか？";
+          case "嫌い": return "なるほど、どうして嫌いなのですか？";
+        }
+      }
+    }
+
+    // 文末に応じて返す
+    if(input.endsWith("?")) return "いい質問ですね。少し考えてみます…。";
+    if(input.endsWith("！")) return "わー！すごいですね！";
+    
+    // 過去の会話を参照してランダム応答
+    const recent = conversationHistory.slice(-3).map(c=>c.text).join(" ");
+    const randomReplies = [
+      "なるほど…",
       "面白いですね！",
       "もう少し詳しく教えてもらえますか？",
-      "なるほど…",
       "ふむふむ…",
       "そうなんですね！"
     ];
-    return randomResponses[Math.floor(Math.random() * randomResponses.length)];
+    return randomReplies[Math.floor(Math.random()*randomReplies.length)];
   }
 
-  // メッセージ追加
   function addMessage(content, sender) {
     const msg = document.createElement("div");
     msg.classList.add("message", sender);
     msg.textContent = content;
     chatLog.appendChild(msg);
-    chatLog.scrollTop = chatLog.scrollHeight; // 自動スクロール
+    chatLog.scrollTop = chatLog.scrollHeight;
   }
 
-  // 送信処理
   function sendMessage() {
     const text = userInput.value.trim();
     if(!text) return;
     addMessage(text, "user");
     userInput.value = "";
-
-    // AI応答（少し遅延を入れると自然）
     setTimeout(() => {
       const botReply = getBotResponse(text);
       addMessage(botReply, "bot");
+      conversationHistory.push({role:"bot", text: botReply});
     }, 500);
   }
 
