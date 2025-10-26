@@ -1,22 +1,140 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI アプリ</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ブラウザAIチャット（API不要）</title>
+<style>
+  body {
+    margin: 0;
+    font-family: 'Segoe UI', sans-serif;
+    background: linear-gradient(to bottom, #ffecd2, #fcb69f); /* 夕焼け風 */
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  #chat-container {
+    width: 400px;
+    max-width: 90%;
+    height: 600px;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 15px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  #chat-log {
+    flex: 1;
+    padding: 15px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .message {
+    max-width: 75%;
+    padding: 10px 15px;
+    border-radius: 20px;
+    word-wrap: break-word;
+  }
+  .user {
+    align-self: flex-end;
+    background: #4e9af1;
+    color: white;
+  }
+  .bot {
+    align-self: flex-start;
+    background: #e0e0e0;
+    color: #333;
+  }
+  #input-area {
+    display: flex;
+    border-top: 1px solid #ccc;
+  }
+  #input-area input {
+    flex: 1;
+    border: none;
+    padding: 10px 15px;
+    font-size: 16px;
+    outline: none;
+    border-radius: 0 0 0 15px;
+  }
+  #input-area button {
+    border: none;
+    padding: 10px 15px;
+    background: #4e9af1;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    border-radius: 0 0 15px 0;
+  }
+  #input-area button:hover {
+    background: #3a7dc5;
+  }
+</style>
 </head>
 <body>
-    <h1>AI チャット</h1>
-    <div id="chat-container">
-        <div id="chat-log">
-            </div>
-        <form id="chat-form">
-            <input type="text" id="user-input" placeholder="メッセージを入力...">
-            <button type="submit">送信</button>
-        </form>
+  <div id="chat-container">
+    <div id="chat-log"></div>
+    <div id="input-area">
+      <input type="text" id="user-input" placeholder="メッセージを入力…">
+      <button id="send-btn">送信</button>
     </div>
+  </div>
 
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+<script>
+  const chatLog = document.getElementById("chat-log");
+  const userInput = document.getElementById("user-input");
+  const sendBtn = document.getElementById("send-btn");
+
+  // 簡易AIの応答ルール
+  function getBotResponse(text) {
+    text = text.toLowerCase();
+    if(text.includes("こんにちは")) return "こんにちは！今日は元気ですか？";
+    if(text.includes("元気")) return "それは良かったです！";
+    if(text.includes("名前")) return "私はブラウザAIです。";
+    if(text.includes("ありがとう")) return "どういたしまして！";
+    if(text.includes("さようなら") || text.includes("バイ")) return "さようなら！またね。";
+    // ランダム応答
+    const randomResponses = [
+      "面白いですね！",
+      "もう少し詳しく教えてもらえますか？",
+      "なるほど…",
+      "ふむふむ…",
+      "そうなんですね！"
+    ];
+    return randomResponses[Math.floor(Math.random() * randomResponses.length)];
+  }
+
+  // メッセージ追加
+  function addMessage(content, sender) {
+    const msg = document.createElement("div");
+    msg.classList.add("message", sender);
+    msg.textContent = content;
+    chatLog.appendChild(msg);
+    chatLog.scrollTop = chatLog.scrollHeight; // 自動スクロール
+  }
+
+  // 送信処理
+  function sendMessage() {
+    const text = userInput.value.trim();
+    if(!text) return;
+    addMessage(text, "user");
+    userInput.value = "";
+
+    // AI応答（少し遅延を入れると自然）
+    setTimeout(() => {
+      const botReply = getBotResponse(text);
+      addMessage(botReply, "bot");
+    }, 500);
+  }
+
+  sendBtn.addEventListener("click", sendMessage);
+  userInput.addEventListener("keydown", (e) => {
+    if(e.key === "Enter") sendMessage();
+  });
+</script>
 </body>
 </html>
