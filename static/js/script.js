@@ -2,19 +2,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('chat-form');
     const userInput = document.getElementById('user-input');
     const chatLog = document.getElementById('chat-log');
+    const sendButton = form.querySelector('button');
 
     form.addEventListener('submit', async (e) => {
-        e.preventDefault(); // フォームのデフォルトの送信動作をキャンセル
+        e.preventDefault();
 
         const question = userInput.value.trim();
         if (!question) return;
 
-        // ユーザーの質問をチャットログに追加
         appendMessage('user', question);
-        userInput.value = ''; // 入力欄をクリア
+        userInput.value = '';
+        sendButton.disabled = true;
+
+        // ローディング表示を追加
+        const loadingElement = appendMessage('ai', '考え中...', true);
 
         try {
-            // バックエンドのAPIに質問を送信
             const response = await fetch('/ask', {
                 method: 'POST',
                 headers: {
@@ -24,24 +27,35 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             if (!response.ok) {
-                throw new Error('ネットワークの応答が正しくありませんでした。');
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'ネットワークエラー');
             }
 
             const data = await response.json();
-            // AIの回答をチャットログに追加
-            appendMessage('ai', data.answer);
+            // ローディング表示をAIの回答に更新
+            loadingElement.textContent = data.answer;
 
         } catch (error) {
             console.error('エラー:', error);
-            appendMessage('ai', '申し訳ありません、エラーが発生しました。');
+            loadingElement.textContent = `申し訳ありません、エラーが発生しました: ${error.message}`;
+            loadingElement.style.color = 'red';
+        } finally {
+            sendButton.disabled = false;
+            chatLog.scrollTop = chatLog.scrollHeight;
         }
     });
 
-    function appendMessage(sender, message) {
+    function appendMessage(sender, message, isLoading = false) {
         const messageElement = document.createElement('div');
         messageElement.classList.add('message', `${sender}-message`);
         messageElement.textContent = message;
+
+        if (isLoading) {
+            messageElement.classList.add('loading-indicator');
+        }
+
         chatLog.appendChild(messageElement);
-        chatLog.scrollTop = chatLog.scrollHeight; // 自動でスクロール
+        chatLog.scrollTop = chatLog.scrollHeight;
+        return messageElement; // 要素を返す
     }
 });
