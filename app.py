@@ -1,74 +1,38 @@
 import os
 from flask import Flask, render_template, request, jsonify
+import requests
 import random
-import re
+from dotenv import load_dotenv # 環境変数をロードするために再度追加
+
+# .envファイルから環境変数を読み込む（ローカル開発用）
+load_dotenv()
 
 app = Flask(__name__)
 
-# APIを使わないローカルAIの応答ロジック
-def get_local_ai_response(question):
+# 環境変数からBing Search API Keyとエンドポイントを設定
+BING_API_KEY = os.environ.get("4a629363ad782aa113101f284c5d530e49764e03")
+BING_ENDPOINT = "https://api.bing.microsoft.com/v7.0/search" # 例: Bing Web Search API
+
+# APIキーがない場合は警告を出す
+if not BING_API_KEY:
+    print("Warning: BING_API_KEY is not set. Bing AI functionality will be limited or fail.")
+
+# ローカルフォールバック応答を定義
+def get_local_fallback_response(question):
     """
-    ルールベースで応答を生成する関数を強化
+    APIが失敗した場合やキーがない場合のローカル応答
     """
     question_lower = question.lower()
     
-    # --- 1. 特定のキーワードに対する応答 ---
-    # 挨拶
-    if any(word in question_lower for word in ["こんにちは", "やあ", "どうも"]):
-        return random.choice(["こんにちは！星の海へようこそ。", "どうも！何か面白い話はありますか？"])
+    if any(word in question_lower for word in ["こんにちは", "やあ"]):
+        return "Bing AIに接続中…！こんにちは、星の海から応答します。"
     if any(word in question_lower for word in ["ありがとう", "感謝"]):
-        return random.choice(["どういたしまして！", "お役に立てて光栄です。", "こちらこそ！"])
-    # 自己紹介
-    if any(word in question_lower for word in ["名前は", "あなたは誰", "自己紹介"]):
-        return random.choice(["私はこのアプリの星空を旅するAIです。", "名もなき航海士、といったところでしょうか。"])
-    # 天気
-    if "天気" in question_lower:
-        return "残念ながら、この宇宙船からは地球の天気は観測できないんです…。"
-    # ユーモア
-    if any(word in question_lower for word in ["面白い話", "ジョーク", "笑わせて"]):
-        return random.choice([
-            "宇宙人がレストランに入って一言。「この店の雰囲気、惑星一だね！」",
-            "布団が吹っ飛んだ、の宇宙バージョンは「ブラックホールがホワイトホールに吸い込まれた」です。",
-        ])
-    # 雑学
-    if any(word in question_lower for word in ["雑学", "豆知識", "教えて"]):
-        return random.choice([
-            "宇宙空間は完全に無音だって知ってましたか？音を伝える空気がないからです。",
-            "木星の巨大な嵐「大赤斑」は、地球が丸ごと2〜3個入るほどの大きさなんですよ。",
-            "光の速さは秒速約30万kmですが、それでも太陽から地球まで約8分19秒かかります。"
-        ])
-
-    # --- 2. パターンマッチングによる簡易計算 ---
-    # 例: 「5たす3は？」「12 x 5 = ?」
-    match = re.search(r'(\d+)\s*([\+\-\*\/]|たす|ひく|かける|わる)\s*(\d+)', question_lower)
-    if match:
-        num1 = int(match.group(1))
-        op = match.group(2)
-        num2 = int(match.group(3))
-        
-        try:
-            if op in ['+', 'たす']:
-                return f"計算しますね。答えは {num1 + num2} です。"
-            if op in ['-', 'ひく']:
-                return f"えーっと…たしか {num1 - num2} ですね。"
-            if op in ['*', 'かける']:
-                return f"暗算します… {num1 * num2} でしょうか。"
-            if op in ['/', 'わる']:
-                if num2 == 0:
-                    return "ゼロで割ることは、宇宙の法則で禁じられているんです！"
-                return f"答えは {num1 / num2} です。"
-        except Exception:
-            return "うーん、難しい計算はちょっと苦手かもしれません…。"
-
-    # --- 3. デフォルトの応答 ---
-    default_responses = [
-        "なるほど…宇宙の神秘のようですね。",
-        "もう少し詳しく教えてもらえますか？",
-        f"「{question}」についてですね。興味深いです。",
-        "それは、まるで未知の惑星を発見した時のような驚きです！",
-        "すみません、ワームホールを通過中でよく聞き取れませんでした。",
-    ]
-    return random.choice(default_responses)
+        return "どういたしまして！情報探索を続けます。"
+    
+    return random.choice([
+        "Bing AIに接続できませんでした。申し訳ありませんが、もう一度質問を繰り返してください。",
+        "現在、外部ネットワークとの接続が不安定です。ローカルAIの応答です。",
+    ])
 
 
 @app.route('/')
@@ -81,14 +45,41 @@ def ask():
     if not user_question:
         return jsonify({'error': '質問がありません'}), 400
 
+    if not BING_API_KEY:
+        # APIキーがない場合のフォールバック
+        return jsonify({'answer': get_local_fallback_response(user_question)})
+
+    # --- Bing Search APIによる応答生成 ---
+    
+    headers = {"Ocp-Apim-Subscription-Key": BING_API_KEY}
+    params = {"q": user_question, "count": 3} # 質問をクエリとして送信し、結果を3件取得
+    
     try:
-        ai_answer = get_local_ai_response(user_question)
+        response = requests.get(BING_ENDPOINT, headers=headers, params=params, timeout=5)
+        response.raise_for_status() # HTTPエラーが発生した場合に例外を発生させる
+        search_results = response.json()
+        
+        ai_answer = "検索結果に基づいた応答です：\n\n"
+        
+        if 'webPages' in search_results and search_results['webPages']['value']:
+            # 検索結果から最も関連性の高い3つの情報を抽出
+            for i, result in enumerate(search_results['webPages']['value']):
+                ai_answer += f"[{i+1}] **{result.get('name', 'タイトルなし')}**:\n"
+                ai_answer += f" - {result.get('snippet', '概要なし')}\n"
+                # Bing AIのような流暢な応答をシミュレート
+            
+            ai_answer += "\nこれはBing AIによる検索結果です。詳細情報は提供されたリンクから確認してください。"
+        else:
+            ai_answer = get_local_fallback_response(user_question) # 検索結果がない場合はフォールバック
+            
         return jsonify({'answer': ai_answer})
 
-    except Exception as e:
-        print(f"Error: {e}")
-        return jsonify({'error': '応答生成中にエラーが発生しました。'}), 500
+    except requests.exceptions.RequestException as e:
+        print(f"Bing API Error: {e}")
+        # API呼び出し失敗時のフォールバック
+        return jsonify({'answer': get_local_fallback_response(user_question)})
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
+    # 環境変数を設定していない場合は警告が出るため、デバッグモードを無効にして実行を推奨
     app.run(host='0.0.0.0', port=port, debug=False)
