@@ -10,7 +10,7 @@ load_dotenv()
 app = Flask(__name__)
 
 # 環境変数からBing Search API Keyとエンドポイントを設定
-BING_API_KEY = os.environ.get("4a629363ad782aa113101f284c5d530e49764e03")
+BING_API_KEY = os.environ.get("BING_API_KEY")
 BING_ENDPOINT = "https://api.bing.microsoft.com/v7.0/search" # 例: Bing Web Search API
 
 # APIキーがない場合は警告を出す
