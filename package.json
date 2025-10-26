@@ -1,0 +1,10 @@
+{
+  "name": "ai-chat-app",
+  "version": "1.0.0",
+  "description": "A simple AI chat application.",
+  "author": "Your Name",
+  "private": true,
+  "scripts": {
+    "start": "python app.py"
+  }
+}
